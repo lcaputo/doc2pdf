@@ -4,17 +4,17 @@ import sys
 import subprocess
 from uuid import uuid4
 from flask import Flask, render_template, request, jsonify, send_from_directory
-
+from werkzeug import secure_filename
 
 app = Flask(__name__)
 
 app.config['UPLOADS_FOLDER'] = "./UPLOAD_FOLDER"
-app.config['EXPORT_PDF_FOLDER'] = "./PDF"
 
 
-def save_to(folder, file):
+def save_to(folder, file, upload_id):
     os.makedirs(folder, exist_ok=True)
-    save_path = os.path.join(folder, secure_filename(file.filename))
+    name, ext = os.path.splitext (file.filename)
+    save_path = os.path.join(folder, secure_filename(upload_id+ext))
     file.save(save_path)
     return save_path
 
@@ -42,35 +42,38 @@ class LibreOfficeError(Exception):
         self.output = output
 
 
+def uploads_url(path):
+    return path.replace(app.config['UPLOADS_FOLDER'], '/uploads')
+
 
 @app.route('/doc2pdf', methods=['POST'])
-def upload_file(re):
+def upload_file():
     upload_id = str(uuid4())
-    source = save_to(os.path.join(app.config['UPLOADS_FOLDER'], 'source', upload_id), request.files['file'])
+    source = save_to(os.path.join(app.config['UPLOADS_FOLDER'], 'source'), request.files['file'], upload_id)
 
     try:
-        result = convert_to(os.path.join(app.config['UPLOADS_FOLDER'], 'pdf', upload_id), source, timeout=15)
+        result = convert_to(os.path.join(app.config['UPLOADS_FOLDER'], 'pdf'), source, timeout=15)
     except LibreOfficeError:
         raise InternalServerErrorError({'message': 'Error when converting file to PDF'})
     except TimeoutExpired:
         raise InternalServerErrorError({'message': 'Timeout when converting file to PDF'})
 
-    return jsonify({'result': {'source': uploads_url(source), 'pdf': uploads_url(result)}})
+    return jsonify({'result': {'source': uploads_url(source), 'pdf': upload_id }})
 
 
-@app.route('/pdf/<path:path>', methods=['GET'])
+@app.route('/<path:path>', methods=['GET'])
 def serve_uploads(path):
-    return send_from_directory(app.config['EXPORT_PDF_FOLDER'], path)
+    return send_from_directory(app.config['UPLOADS_FOLDER'], path+'.pdf')
 
 
-@app.errorhandler(500)
-def handle_500_error():
-    return InternalServerErrorError().to_response()
+#@app.errorhandler(500)
+#def handle_500_error():
+#    return InternalServerErrorError().to_response()
 
 
-@app.errorhandler(RestAPIError)
-def handle_rest_api_error(error):
-    return error.to_response()
+#@app.errorhandler(RestAPIError)
+#def handle_rest_api_error(error):
+#    return error.to_response()
 
 
 if __name__ == '__main__':
