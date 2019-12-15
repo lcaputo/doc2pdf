@@ -58,7 +58,8 @@ def upload_file():
     except TimeoutExpired:
         raise InternalServerErrorError({'message': 'Timeout when converting file to PDF'})
 
-    return jsonify({'result': {'source': uploads_url(source), 'pdf': upload_id }})
+    #return jsonify({'result': {'source': uploads_url(source), 'pdf': upload_id }})
+    return send_from_directory(app.config['UPLOADS_FOLDER'], 'pdf/'upload_id+'.pdf')
 
 
 @app.route('/<path:path>', methods=['GET'])
