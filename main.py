@@ -19,7 +19,6 @@ def save_to(folder, file, upload_id):
     return save_path
 
 
-
 def convert_to(folder, source, timeout=None):
     args = [libreoffice_exec(), '--headless', '--convert-to', 'pdf', '--outdir', folder, source]
 
@@ -64,16 +63,6 @@ def upload_file():
 @app.route('/<path:path>', methods=['GET'])
 def serve_uploads(path):
     return send_from_directory(app.config['UPLOADS_FOLDER'], path+'.pdf')
-
-
-#@app.errorhandler(500)
-#def handle_500_error():
-#    return InternalServerErrorError().to_response()
-
-
-#@app.errorhandler(RestAPIError)
-#def handle_rest_api_error(error):
-#    return error.to_response()
 
 
 if __name__ == '__main__':
